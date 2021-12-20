@@ -338,19 +338,21 @@ const App = () => {
                   </div>
                 </div>
               ))}
-              {isTokenHolder && 
-                <button disabled={isVoting || hasVoted} type="submit">
-                  {isVoting
-                    ? "Voting..."
-                    : hasVoted
-                      ? "You Already Voted"
-                      : "Submit Votes"}
-                </button>
+              {isTokenHolder &&
+                <>
+                  <button disabled={isVoting || hasVoted} type="submit">
+                    {isVoting
+                      ? "Voting..."
+                      : hasVoted
+                        ? "You Already Voted"
+                        : "Submit Votes"}
+                  </button>
+                  <small>
+                    This will trigger multiple transactions that you will need to
+                    sign.
+                  </small>
+                </>
               }
-              <small>
-                This will trigger multiple transactions that you will need to
-                sign.
-              </small>
             </form>
           </div>
         </div>
