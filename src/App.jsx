@@ -22,13 +22,12 @@ const voteModule = sdk.getVoteModule(
 );
 
 const App = () => {
-  const { connectWallet, address, error, provider } = useWeb3();
-  console.log("👋 Address:", address)
+  const { connectWallet, address: userAddress, error, provider } = useWeb3();
+  console.log("👋 Address:", userAddress)
 
   // The signer is required to sign transactions on the blockchain.
   // Without it we can only read data, not write.
   const signer = provider ? provider.getSigner() : undefined;
-
   const [hasClaimedNFT, setHasClaimedNFT] = useState(false);
   // isClaiming lets us easily keep a loading state while the NFT is minting.
   const [isClaiming, setIsClaiming] = useState(false);
@@ -41,6 +40,8 @@ const App = () => {
   const [proposals, setProposals] = useState([]);
   const [isVoting, setIsVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+
+  const isTokenHolder = useMemo(() => Object.getOwnPropertyNames(memberTokenAmounts).includes(userAddress), [userAddress, memberTokenAmounts]);
 
   // Retreive all our existing proposals from the contract.
   useEffect(() => {
@@ -74,7 +75,7 @@ const App = () => {
 
     // Check if the user has already voted on the first proposal.
     voteModule
-      .hasVoted(proposals[0].proposalId, address)
+      .hasVoted(proposals[0].proposalId, userAddress)
       .then((hasVoted) => {
         setHasVoted(hasVoted);
         console.log("🥵 User has already voted")
@@ -82,7 +83,7 @@ const App = () => {
       .catch((err) => {
         console.error("failed to check if wallet has voted", err);
       });
-  }, [hasClaimedNFT, proposals, address]);
+  }, [hasClaimedNFT, proposals, userAddress]);
 
   // A fancy function to shorten someones wallet address, no need to show the whole thing. 
   const shortenAddress = (str) => {
@@ -149,13 +150,13 @@ const App = () => {
   }, [signer]);
   useEffect(() => {
     // If they don't have an connected wallet, exit!
-    if (!address) {
+    if (!userAddress) {
       return;
     }
     
     // Check if the user has the NFT by using bundleDropModule.balanceOf
     return bundleDropModule
-      .balanceOf(address, "0")
+      .balanceOf(userAddress, "0")
       .then((balance) => {
         // If balance is greater than 0, they have our NFT!
         if (balance.gt(0)) {
@@ -170,7 +171,7 @@ const App = () => {
         setHasClaimedNFT(false);
         console.error("failed to nft balance", error);
       });
-  }, [address]);
+  }, [userAddress]);
 
   if (error && error.name === "UnsupportedChainIdError") {
     return (
@@ -186,7 +187,7 @@ const App = () => {
 
   // This is the case where the user hasn't connected their wallet
   // to your web app. Let them call connectWallet.
-  if (!address) {
+  if (!userAddress) {
     return (
       <div className="landing">
         <h1>Welcome to OnePieceDAO</h1>
@@ -259,11 +260,11 @@ const App = () => {
                 // first we need to make sure the user delegates their token to vote
                 try {
                   //we'll check if the wallet still needs to delegate their tokens before they can vote
-                  const delegation = await tokenModule.getDelegationOf(address);
+                  const delegation = await tokenModule.getDelegationOf(userAddress);
                   // if the delegation is the 0x0 address that means they have not delegated their governance tokens yet
                   if (delegation === ethers.constants.AddressZero) {
                     //if they haven't delegated their tokens yet, we'll have them delegate them before voting
-                    await tokenModule.delegateTo(address);
+                    await tokenModule.delegateTo(userAddress);
                   }
                   // then we need to vote on the proposals
                   try {
@@ -337,13 +338,15 @@ const App = () => {
                   </div>
                 </div>
               ))}
-              <button disabled={isVoting || hasVoted} type="submit">
-                {isVoting
-                  ? "Voting..."
-                  : hasVoted
-                    ? "You Already Voted"
-                    : "Submit Votes"}
-              </button>
+              {isTokenHolder && 
+                <button disabled={isVoting || hasVoted} type="submit">
+                  {isVoting
+                    ? "Voting..."
+                    : hasVoted
+                      ? "You Already Voted"
+                      : "Submit Votes"}
+                </button>
+              }
               <small>
                 This will trigger multiple transactions that you will need to
                 sign.
